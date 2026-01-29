@@ -12,7 +12,7 @@
   --border-radius: 24px;
   --container-width: 1024px;
   --transition: all 0.3s ease;
-  --hero-bg-image: url('../img/cover.jpg');
+  --hero-bg-image: url('../cover.jpg');
 }
 
 * {
@@ -424,66 +424,6 @@ h1, h2, h3 {
   font-size: 14px;
 }
 
-/* Timeline */
-.timeline {
-  margin-top: 32px;
-}
-
-.timeline-item {
-  display: grid;
-  grid-template-columns: 200px 1fr;
-  gap: 20px;
-  align-items: stretch;
-  border: 1px solid var(--border-color);
-  border-radius: var(--border-radius);
-  background: var(--bg-white);
-  box-shadow: var(--shadow-light);
-  overflow: hidden;
-  margin-bottom: 20px;
-  transition: var(--transition);
-}
-
-.timeline-item:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 24px 65px rgba(139, 69, 19, 0.18);
-}
-
-.timeline-image {
-  background: center/cover no-repeat;
-  transition: var(--transition);
-}
-
-.timeline-item:hover .timeline-image {
-  transform: scale(1.05);
-}
-
-.timeline-content {
-  padding: 24px;
-}
-
-.timeline-date {
-  font-family: 'Playfair Display', serif;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: var(--primary-color);
-  font-size: 15px;
-  margin-bottom: 8px;
-}
-
-.timeline-title {
-  margin: 8px 0 12px;
-  font-family: 'Playfair Display', serif;
-  font-weight: 600;
-  font-size: 20px;
-  color: var(--text-dark);
-}
-
-.timeline-text {
-  color: var(--text-light);
-  line-height: 1.8;
-  font-size: 14px;
-}
-
 /* Gallery */
 .photo-gallery {
   display: grid;
@@ -800,7 +740,7 @@ h1, h2, h3 {
   border-radius: var(--border-radius);
   background: var(--bg-white);
   box-shadow: var(--shadow-light);
-  padding: 24px;
+  padding: 10px;
   text-align: center;
   transition: var(--transition);
 }
@@ -811,9 +751,9 @@ h1, h2, h3 {
 
 .gift-card img {
   width: 100%;
-  max-width: 280px;
-  margin: 0 auto 16px;
-  border-radius: 20px;
+  max-width: 180px;
+  margin: 0 auto 8px;
+  border-radius: 10px;
   border: 1px solid var(--border-color);
   box-shadow: 0 12px 30px rgba(139, 69, 19, 0.12);
 }
@@ -1078,4 +1018,156 @@ html {
 
 ::-webkit-scrollbar-thumb:hover {
   background: #c19660;
+}
+
+/* =========================
+   LOVE STORY (full background like mẫu)
+   ========================= */
+#love-story{
+  padding: 0;
+  background: #2b2320;
+  color: #fff;
+}
+#love-story .container{
+  max-width: 100%;
+  padding: 0;
+}
+#love-story .section-header{
+  padding: 74px 18px 26px;
+  text-align: center;
+}
+#love-story .section-subtitle{
+  color: rgba(255,255,255,.90);
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  font-size: 13px;
+  font-weight: 500;
+}
+#love-story .section-title{
+  color: #fff;
+  letter-spacing: .26em;
+  text-transform: uppercase;
+  font-size: 34px;
+  margin: 0;
+}
+
+/* Timeline wrapper */
+#timeline.timeline{
+  width: 100%;
+}
+
+/* Each story block */
+.timeline-item{
+  position: relative;
+  min-height: 760px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+
+/* background image */
+.timeline-bg{
+  position:absolute;
+  inset:0;
+  background-size: cover;
+  background-position: center;
+  transform: scale(1.03);
+}
+.timeline-dim{
+  position:absolute;
+  inset:0;
+  background: rgba(0,0,0,.48);
+}
+
+/* center content */
+.timeline-center{
+  position: relative;
+  z-index: 2;
+  width: min(960px, 92vw);
+  margin: 0 auto;
+  text-align: center;
+  padding: 58px 16px 74px;
+}
+
+/* Arch photo: rounded top + flat-ish bottom */
+.timeline-arch{
+  width: min(420px, 78vw);
+  aspect-ratio: 1 / 1;
+  margin: 0 auto 18px;
+  border-radius: 999px 999px 26px 26px;
+  overflow: hidden;
+  box-shadow: 0 22px 60px rgba(0,0,0,.30);
+}
+.timeline-arch img{
+  width:100%;
+  height:100%;
+  object-fit: cover;
+  display:block;
+}
+
+/* text */
+.timeline-date{
+  color: rgba(255,255,255,.92);
+  letter-spacing: .12em;
+  font-size: 12px;
+  margin-top: 6px;
+  font-family: 'Playfair Display', serif;
+}
+.timeline-title{
+  margin-top: 6px;
+  font-family: 'Great Vibes', cursive;
+  font-size: 40px;
+  font-weight: 400;
+  color: #fff;
+}
+.timeline-text{
+  margin: 10px auto 0;
+  max-width: 760px;
+  color: rgba(255,255,255,.92);
+  line-height: 1.75;
+  font-size: 16px;
+}
+
+/* Center vertical line */
+.timeline-pin{
+  width: 2px;
+  height: 46px;
+  background: rgba(255,255,255,.65);
+  margin: 22px auto 0;
+  border-radius: 999px;
+}
+
+.timeline-divider{
+  height: 84px;
+  position: relative;
+  background: #2b2320;
+}
+.timeline-divider::before{
+  content:"";
+  position:absolute;
+  left:50%;
+  top: 12px;
+  transform: translateX(-50%);
+  width: 2px;
+  height: 60px;
+  background: rgba(255,255,255,.65);
+  border-radius: 999px;
+}
+
+@media (max-width: 480px){
+  #love-story .section-header{ padding: 58px 14px 18px; }
+  #love-story .section-title{ font-size: 28px; }
+  .timeline-item{ min-height: 680px; }
+  .timeline-title{ font-size: 36px; }
+  .timeline-text{ font-size: 15px; }
+}
+
+/* Snow canvas */
+#snow{
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 999; /* above content */
 }
