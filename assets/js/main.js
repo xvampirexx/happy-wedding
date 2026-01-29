@@ -77,7 +77,7 @@ const CONFIG = {
     total: 39,
     firstLoad: 12,
     loadMore: 12,
-    imagePath: (index) => `assets/album/${index}.jpg`
+imagePath: (index) => `assets/album_webp/${index}.webp`
   }
 };
 
