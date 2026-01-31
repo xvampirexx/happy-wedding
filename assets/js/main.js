@@ -1,562 +1,389 @@
-// Wedding Invitation Configuration
-const CONFIG = {
-  groom: "Thinh Nguyễn",
-  bride: "Nhung Suzy",
-  weddingDate: "2026-03-08T10:30:00+07:00",
-  weddingDateText: "Chủ Nhật 08 Tháng 03 2026",
+(function(){
+  // ===== config =====
+  // Wedding date (Asia/Tokyo +09:00). Change time if needed.
+  const WEDDING_ISO = "2026-03-08T00:00:00+09:00";
+  const RSVP_DEADLINE_TEXT = "2026年03月08日 (日)";
 
-  groomInfo: {
-    description:
-      "Chú rể là người cởi mở, thân thiện, giao tiếp tốt và thuộc tuýp người hướng ngoại."
-  },
+  // Album config (your current structure is 1.webp..)
+  // If you convert to webp: folder='assets/album_webp', ext='webp'
+  const ALBUM = { total: 39, initial: 9, addEach: 12, folder: "assets/album", ext: "webp" };
 
-  brideInfo: {
-    description:
-      "Cô dâu thuộc tuýp người hướng nội. Sở thích nấu nướng và đi du lịch cùng gia đình."
-  },
+  // ===== nav =====
+  const navBtn = document.getElementById("navBtn");
+  const navPanel = document.getElementById("navPanel");
+  const navBackdrop = document.getElementById("navBackdrop");
 
-  loveStory: [
-    {
-      date: "07.2025",
-      title: "Lần đầu gặp",
-      text:
-        "Ngày ấy vu vơ đăng một dòng status trên facebook than thở, vu vơ đùa giỡn nói chuyện với một người xa lạ chưa từng quen.",
-      image: "assets/story-1.jpg"
-    },
-    {
-      date: "12.2025",
-      title: "Ngõ lời yêu",
-      text:
-        "Mỗi chiều cuối tuần thường chạy xe vòng quanh qua những con phố, len lỏi trong từng dòng người tấp nập.",
-      image: "assets/story-2.jpg"
-    },
-    {
-      date: "20.10.2025",
-      title: "Cầu hôn",
-      text:
-        "Chúng ta từ 2 con người xa lạ mà bước vào cuộc đời nhau. Và giờ đây chúng ta tiếp tục cùng nhau sang trang mới.",
-      image: "assets/story-3.jpg"
-    },
-    {
-      date: "22.12.2025",
-      title: "Ngày trọng đại",
-      text:
-        "Em và anh không chỉ là người yêu mà chúng ta còn là tri kỷ. Ngày hôm nay, em sẽ là cô dâu của anh.",
-      image: "assets/story-4.jpg"
+  function openNav(){
+    navPanel.hidden = false;
+    navBackdrop.hidden = false;
+    navBtn.setAttribute("aria-expanded","true");
+  }
+  function closeNav(){
+    navPanel.hidden = true;
+    navBackdrop.hidden = true;
+    navBtn.setAttribute("aria-expanded","false");
+  }
+  navBtn?.addEventListener("click", ()=>{
+    const open = navBtn.getAttribute("aria-expanded")==="true";
+    open ? closeNav() : openNav();
+  });
+  navBackdrop?.addEventListener("click", closeNav);
+  navPanel?.addEventListener("click", (e)=>{
+    if(e.target.closest("a")) closeNav();
+  });
+
+  // smooth scroll
+  document.addEventListener("click", (e)=>{
+    const a = e.target.closest('a[href^="#"]');
+    if(!a) return;
+    const id = a.getAttribute("href");
+    if(!id || id.length<=1) return;
+    const el = document.querySelector(id);
+    if(!el) return;
+    e.preventDefault();
+    el.scrollIntoView({behavior:"smooth", block:"start"});
+  });
+
+  // ===== countdown =====
+  const $d = document.getElementById("cdDays");
+  const $h = document.getElementById("cdHours");
+  const $m = document.getElementById("cdMinutes");
+  const $s = document.getElementById("cdSeconds");
+  const $deadline = document.getElementById("rsvpDeadline");
+  if($deadline) $deadline.textContent = RSVP_DEADLINE_TEXT;
+
+  const target = new Date(WEDDING_ISO).getTime();
+
+  function pad(n){ return String(n).padStart(2,"0"); }
+
+  function tick(){
+    const now = Date.now();
+    let diff = Math.max(0, target - now);
+
+    const days = Math.floor(diff / (1000*60*60*24));
+    diff -= days * (1000*60*60*24);
+    const hours = Math.floor(diff / (1000*60*60));
+    diff -= hours * (1000*60*60);
+    const mins = Math.floor(diff / (1000*60));
+    diff -= mins * (1000*60);
+    const secs = Math.floor(diff / 1000);
+
+    if($d) $d.textContent = String(days);
+    if($h) $h.textContent = pad(hours);
+    if($m) $m.textContent = pad(mins);
+    if($s) $s.textContent = pad(secs);
+  }
+  tick();
+  setInterval(tick, 1000);
+
+  // ===== album slider =====
+  const slider = document.getElementById("albumSlider");
+  const $prev = document.getElementById("albumPrev");
+  const $cur = document.getElementById("albumCurrent");
+  const $next = document.getElementById("albumNext");
+  let prevBtn = document.getElementById("albumPrevBtn") || document.querySelector(".album-prev-btn");
+  let nextBtn = document.getElementById("albumNextBtn") || document.querySelector(".album-next-btn");
+  const thumbs = document.getElementById("albumThumbs");
+
+  function path(i){ return `${ALBUM.folder}/${i}.${ALBUM.ext}`; }
+  function clampIndex(i){
+    const max = Math.max(1, ALBUM.total);
+    const v = ((i % max) + max) % max;
+    return v;
+  }
+  function toIdFromIndex(idx0){ return idx0 + 1; }
+  function toIndexFromId(id1){ return id1 - 1; }
+
+  let current = 0;
+  let thumbButtons = [];
+
+  function renderThumbs(){
+    if(!thumbs) return;
+    thumbs.innerHTML = "";
+    thumbButtons = [];
+    for(let i=1; i<=ALBUM.total; i++){
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "album-thumb";
+      b.setAttribute("aria-label", `photo ${i}`);
+      b.setAttribute("aria-current", "false");
+
+      const img = document.createElement("img");
+      img.loading = "lazy";
+      img.decoding = "async";
+      img.src = path(i);
+      img.alt = `album-${i}`;
+      b.appendChild(img);
+
+      b.addEventListener("click", ()=>{
+        setCurrent(toIndexFromId(i), { scrollThumb: true });
+      });
+
+      thumbs.appendChild(b);
+      thumbButtons.push(b);
     }
-  ],
+  }
 
-  events: [
-    {
-      title: "Nhà Trai",
-      place: "Bùi Hạ Yết Kiêu Hải Phòng",
-      time: "Vào lúc 10:30 Sáng",
-      weekday: "Chủ Nhật",
-      date: "08/03",
-      year: "2026",
-      lunar: "Nhằm ngày 20 Tháng 1 Năm Qúy Mão Âm lịch",
-      mapUrl:
-        "https://maps.app.goo.gl/m33UufF9hbvbb3816",
-      image: "assets/cover.jpg"
-    },
-    {
-      title: "Nhà Gái",
-      place: "Phường Minh Đức Bắc Ninh",
-      time: "Vào lúc 10:30 Sáng",
-      weekday: "Chủ Nhật",
-      date: "08/03",
-      year: "2026",
-      lunar: "Nhằm ngày 20 Tháng 1 Năm Qúy Mão Âm lịch",
-      mapUrl:
-        "https://maps.app.goo.gl/5Q396rhUVdUQGrSj6",
-      image: "assets/cover.jpg"
+  function setCurrent(nextIndex0, opts){
+    const options = opts || {};
+    const idx = clampIndex(nextIndex0);
+    console.log('setCurrent', { nextIndex0, idx, currentBefore: current });
+    current = idx;
+
+    const idCur = toIdFromIndex(current);
+    const idPrev = toIdFromIndex(clampIndex(current - 1));
+    const idNext = toIdFromIndex(clampIndex(current + 1));
+    console.log('ids', { idPrev, idCur, idNext });
+
+    if($prev){
+      $prev.src = path(idPrev);
+      $prev.alt = `album-${idPrev}`;
+      $prev.loading = "eager";
     }
-  ],
+    if($cur){
+      $cur.src = path(idCur);
+      $cur.alt = `album-${idCur}`;
+      $cur.loading = "eager";
+    }
+    if($next){
+      $next.src = path(idNext);
+      $next.alt = `album-${idNext}`;
+      $next.loading = "eager";
+    }
 
-  gallery: {
-    total: 39,
-    firstLoad: 12,
-    loadMore: 12,
-imagePath: (index) => `assets/album_webp/${index}.webp`
-  }
-};
-
-// Utility
-const $ = (s) => document.querySelector(s);
-const $$ = (s) => document.querySelectorAll(s);
-
-const pad2 = (n) => String(n).padStart(2, "0");
-
-const escapeHtml = (text) => {
-  const div = document.createElement("div");
-  div.textContent = text ?? "";
-  return div.innerHTML;
-};
-
-document.addEventListener("DOMContentLoaded", () => {
-  document.title = `${CONFIG.groom} ♡ ${CONFIG.bride} • Mẫu Thiệp Lãng Mạn`;
-
-  initSnow();       // snow first (canvas)
-  initTimeline();   // love story
-  initEvents();
-  initGallery();
-  initCountdown();
-  initWishes();
-  initMusic();
-  initLightbox();
-  initShare();
-  initSmoothScroll();
-});
-
-/* =========================
-   Snow (tiny)
-   ========================= */
-function initSnow() {
-  const canvas = document.getElementById("snow");
-  if (!canvas) return;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return;
-
-  const img = new Image();
-  img.src = "assets/snowflake.png";
-
-  let W = 0, H = 0, DPR = 1;
-  let flakes = [];
-  const COUNT = 90;
-
-  const rand = (min, max) => Math.random() * (max - min) + min;
-
-  function resize() {
-    W = window.innerWidth;
-    H = window.innerHeight;
-    DPR = Math.min(window.devicePixelRatio || 1, 2);
-    canvas.width = Math.floor(W * DPR);
-    canvas.height = Math.floor(H * DPR);
-    canvas.style.width = W + "px";
-    canvas.style.height = H + "px";
-    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-  }
-
-  function init() {
-    flakes = Array.from({ length: COUNT }).map(() => ({
-      x: rand(0, W),
-      y: rand(-H, H),
-      r: rand(3, 9),         // tiny
-      s: rand(0.5, 1.6),
-      a: rand(0, Math.PI * 2),
-      w: rand(0.2, 0.9)
-    }));
-  }
-
-  function draw() {
-    ctx.clearRect(0, 0, W, H);
-
-    for (const f of flakes) {
-      const drift = Math.sin(f.a) * (f.w * 18);
-      const x = f.x + drift;
-
-      const alpha = 0.20 + (f.r / 20);
-      ctx.globalAlpha = alpha;
-
-      if (img.complete && img.naturalWidth) {
-        ctx.drawImage(img, x, f.y, f.r, f.r);
-      } else {
-        ctx.beginPath();
-        ctx.arc(x, f.y, f.r / 3, 0, Math.PI * 2);
-        ctx.fill();
+    if(thumbButtons.length){
+      for(let i=0; i<thumbButtons.length; i++){
+        thumbButtons[i].setAttribute("aria-current", i === current ? "true" : "false");
       }
-
-      f.y += f.s;
-      f.a += 0.01 + f.s * 0.002;
-
-      if (f.y > H + 24) {
-        f.y = -rand(10, 80);
-        f.x = rand(0, W);
+      const active = thumbButtons[current];
+      if(options.scrollThumb && active?.scrollIntoView){
+        active.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
       }
     }
-
-    ctx.globalAlpha = 1;
-    requestAnimationFrame(draw);
   }
 
-  window.addEventListener("resize", () => {
-    resize();
-    init();
-  });
-
-  resize();
-  init();
-  draw();
-}
-
-/* =========================
-   Love Story (full background)
-   ========================= */
-function initTimeline() {
-  const timeline = document.getElementById("timeline");
-  if (!timeline) return;
-
-  timeline.innerHTML = "";
-
-  const list = Array.isArray(CONFIG.loveStory) ? CONFIG.loveStory : [];
-  list.forEach((story, i) => {
-    const item = document.createElement("div");
-    item.className = "timeline-item";
-
-    item.innerHTML = `
-      <div class="timeline-bg" style="background-image:url('${story.image}')"></div>
-      <div class="timeline-dim"></div>
-      <div class="timeline-center">
-        <div class="timeline-arch">
-          <img src="${story.image}" alt="${escapeHtml(story.title)}" loading="lazy">
-        </div>
-        <div class="timeline-date">${escapeHtml(story.date)}</div>
-        <div class="timeline-title">${escapeHtml(story.title)}</div>
-        <div class="timeline-text">${escapeHtml(story.text)}</div>
-        <div class="timeline-pin" aria-hidden="true"></div>
-      </div>
-    `;
-
-    timeline.appendChild(item);
-
-    if (i < list.length - 1) {
-      const div = document.createElement("div");
-      div.className = "timeline-divider";
-      timeline.appendChild(div);
-    }
-  });
-}
-
-/* =========================
-   Events
-   ========================= */
-function initEvents() {
-  const eventsList = $("#eventsList");
-  if (!eventsList) return;
-  eventsList.innerHTML = "";
-
-  CONFIG.events.forEach((event) => {
-    const card = document.createElement("div");
-    card.className = "event-card";
-    card.innerHTML = `
-      <div class="event-image" style="background-image: url('${event.image}')"></div>
-      <div class="event-content">
-        <div class="event-title">${escapeHtml(event.title)}</div>
-        <div class="event-place">${escapeHtml(event.place)}</div>
-        <div class="event-time">${escapeHtml(event.time)}</div>
-        <div class="event-date-row">
-          <span class="event-weekday">${escapeHtml(event.weekday)}</span>
-          <span class="event-date">${escapeHtml(event.date)}</span>
-          <span class="event-year">${escapeHtml(event.year)}</span>
-        </div>
-        ${event.lunar ? `<div class="event-lunar">${escapeHtml(event.lunar)}</div>` : ""}
-        <div class="event-actions">
-          <a href="${event.mapUrl}" class="event-map-link" target="_blank" rel="noreferrer" aria-label="Mở bản đồ">📍</a>
-        </div>
-      </div>
-    `;
-    eventsList.appendChild(card);
-  });
-}
-
-/* =========================
-   Gallery
-   ========================= */
-function initGallery() {
-  const gallery = $("#photoGallery");
-  const loadMoreBtn = $("#loadMoreBtn");
-  if (!gallery) return;
-
-  let showing = CONFIG.gallery.firstLoad;
-
-  function render() {
-    gallery.innerHTML = "";
-    const max = Math.min(showing, CONFIG.gallery.total);
-
-    for (let i = 1; i <= max; i++) {
-      const item = document.createElement("div");
-      item.className = "gallery-item";
-      const src = CONFIG.gallery.imagePath(i);
-      item.innerHTML = `<img src="${src}" alt="Wedding photo ${i}" loading="lazy">`;
-      item.addEventListener("click", () => openLightbox(src));
-      gallery.appendChild(item);
-    }
-
-    if (loadMoreBtn) {
-      loadMoreBtn.style.display = showing >= CONFIG.gallery.total ? "none" : "inline-flex";
-    }
+  function prev(){ 
+    console.log('prev clicked, current before:', current);
+    setCurrent(current - 1, { scrollThumb: true }); 
+  }
+  function next(){ 
+    console.log('next clicked, current before:', current);
+    setCurrent(current + 1, { scrollThumb: true }); 
   }
 
-  if (loadMoreBtn) {
-    loadMoreBtn.addEventListener("click", () => {
-      showing = Math.min(CONFIG.gallery.total, showing + CONFIG.gallery.loadMore);
-      render();
+  if(slider && $cur && thumbs){
+    renderThumbs();
+    setCurrent(0, { scrollThumb: false });
+
+    // Debug: ensure elements exist
+    console.log('album elements', { slider, $cur, thumbs, prevBtn, nextBtn });
+
+    if(prevBtn){
+      prevBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        console.log('prevBtn clicked', { current });
+        prev();
+      });
+      // Force style to ensure clickable
+      prevBtn.style.pointerEvents = 'auto';
+      prevBtn.style.zIndex = '20';
+    } else {
+      console.error('prevBtn not found');
+    }
+    if(nextBtn){
+      nextBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        console.log('nextBtn clicked', { current });
+        next();
+      });
+      nextBtn.style.pointerEvents = 'auto';
+      nextBtn.style.zIndex = '20';
+    } else {
+      console.error('nextBtn not found');
+    }
+
+    // keyboard support when slider is visible
+    document.addEventListener("keydown", (e)=>{
+      if(e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+      const rect = slider.getBoundingClientRect();
+      const inView = rect.bottom > 0 && rect.top < window.innerHeight;
+      if(!inView) return;
+      if(e.key === "ArrowLeft") prev();
+      else next();
     });
   }
 
-  render();
-}
+  // ===== canvas snowfall =====
+  const canvas = document.getElementById("snowCanvas");
+  if(canvas){
+    const ctx = canvas.getContext("2d");
+    let snowflakes = [];
+    const maxSnowflakes = 150;
 
-/* =========================
-   Countdown
-   ========================= */
-function initCountdown() {
-  const daysEl = $("#days");
-  const hoursEl = $("#hours");
-  const minutesEl = $("#minutes");
-  const secondsEl = $("#seconds");
-  if (!daysEl || !hoursEl || !minutesEl || !secondsEl) return;
+    function resizeCanvas(){
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    resizeCanvas();
+    window.addEventListener("resize", resizeCanvas);
 
-  const weddingTime = new Date(CONFIG.weddingDate).getTime();
+    class Snowflake{
+      constructor(){
+        this.reset();
+        this.y = Math.random() * canvas.height;
+      }
+      reset(){
+        this.x = Math.random() * canvas.width;
+        this.y = -10;
+        this.size = Math.random() * 1.5 + 0.5; // 0.5-2px
+        this.speed = Math.random() * 1 + 0.5; // 0.5-1.5px/frame
+        this.wind = Math.random() * 0.5 - 0.25; // -0.25 to 0.25
+        this.opacity = Math.random() * 0.6 + 0.4;
+      }
+      update(){
+        this.y += this.speed;
+        this.x += this.wind;
+        if(this.y > canvas.height || this.x < -10 || this.x > canvas.width + 10){
+          this.reset();
+        }
+      }
+      draw(){
+        ctx.save();
+        ctx.fillStyle = `rgba(255,255,255,${this.opacity})`;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
 
-  function update() {
-    const now = Date.now();
-    let diff = Math.max(0, weddingTime - now);
+    // init snowflakes
+    for(let i=0;i<maxSnowflakes;i++) snowflakes.push(new Snowflake());
 
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    diff -= days * (1000 * 60 * 60 * 24);
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    diff -= hours * (1000 * 60 * 60);
-    const minutes = Math.floor(diff / (1000 * 60));
-    diff -= minutes * (1000 * 60);
-    const seconds = Math.floor(diff / 1000);
-
-    daysEl.textContent = pad2(days);
-    hoursEl.textContent = pad2(hours);
-    minutesEl.textContent = pad2(minutes);
-    secondsEl.textContent = pad2(seconds);
+    function animate(){
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      snowflakes.forEach(s => {
+        s.update();
+        s.draw();
+      });
+      requestAnimationFrame(animate);
+    }
+    animate();
   }
 
-  update();
-  setInterval(update, 1000);
-}
+  // ===== wishes =====
+  const wishForm = document.getElementById("wishForm");
+  const wishesList = document.getElementById("wishesList");
+  const wishesPlaceholder = document.getElementById("wishesPlaceholder");
+  const senderNameInput = document.getElementById("senderName");
+  const senderEmailInput = document.getElementById("senderEmail");
+  const wishMessageInput = document.getElementById("wishMessage");
+  const saveInfoCheckbox = document.getElementById("saveInfo");
 
-/* =========================
-   Wishes (localStorage)
-   ========================= */
-function initWishes() {
-  const wishForm = $("#wishForm");
-  const wishesList = $("#wishesList");
-  const rememberMe = $("#rememberMe");
+  let wishes = JSON.parse(localStorage.getItem("wishes") || "[]");
 
-  const STORAGE_KEY = "wedding_wishes";
-  const PROFILE_KEY = "wedding_profile";
+  function formatDate(date){
+    return new Intl.DateTimeFormat("vi-VN", {
+      hour:"2-digit", minute:"2-digit", day:"2-digit", month:"2-digit", year:"numeric"
+    }).format(date);
+  }
 
-  const loadWishes = () => {
-    try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]"); }
-    catch { return []; }
-  };
-  const saveWishes = (w) => localStorage.setItem(STORAGE_KEY, JSON.stringify(w));
-
-  const loadProfile = () => {
-    try { return JSON.parse(localStorage.getItem(PROFILE_KEY) || "{}"); }
-    catch { return {}; }
-  };
-  const saveProfile = (p) => localStorage.setItem(PROFILE_KEY, JSON.stringify(p));
-
-  const render = () => {
-    if (!wishesList) return;
-    const wishes = loadWishes().slice().reverse();
-    wishesList.innerHTML = "";
-
-    if (!wishes.length) {
-      wishesList.innerHTML =
-        '<div class="wish-item"><div class="wish-message">Chưa có lời chúc nào. Hãy là người đầu tiên gửi lời chúc đến cặp đôi!</div></div>';
+  function renderWishes(){
+    if(!wishesList) return;
+    if(wishes.length === 0){
+      if(wishesPlaceholder) wishesPlaceholder.style.display = "block";
+      wishesList.innerHTML = "";
       return;
     }
-
-    wishes.forEach((wish) => {
-      const el = document.createElement("div");
-      el.className = "wish-item";
-      el.innerHTML = `
-        <div class="wish-header">
-          <div class="wish-name">${escapeHtml(wish.name)}</div>
-          <div class="wish-time">${new Date(wish.timestamp).toLocaleString("vi-VN")}</div>
-        </div>
-        <div class="wish-message">${escapeHtml(wish.message)}</div>
-      `;
-      wishesList.appendChild(el);
-    });
-  };
-
-  const profile = loadProfile();
-  if (profile.name) {
-    const nameInput = wishForm?.querySelector('input[name="name"]');
-    if (nameInput) nameInput.value = profile.name;
-  }
-  if (profile.email) {
-    const emailInput = wishForm?.querySelector('input[name="email"]');
-    if (emailInput) emailInput.value = profile.email;
+    if(wishesPlaceholder) wishesPlaceholder.style.display = "none";
+    wishesList.innerHTML = wishes.map(w => `
+      <div class="wish-item">
+        <div class="wish-author">${w.name}</div>
+        <div class="wish-time">${formatDate(new Date(w.timestamp))}</div>
+        <div class="wish-text">${w.message.replace(/\n/g, "<br>")}</div>
+      </div>
+    `).join("");
   }
 
-  if (wishForm) {
+  function loadSavedInfo(){
+    const saved = JSON.parse(localStorage.getItem("wishSavedInfo") || "{}");
+    if(saved.name) senderNameInput.value = saved.name;
+    if(saved.email) senderEmailInput.value = saved.email;
+    if(saved.saveInfo !== undefined) saveInfoCheckbox.checked = saved.saveInfo;
+  }
+
+  function saveInfoIfNeeded(){
+    if(saveInfoCheckbox.checked){
+      localStorage.setItem("wishSavedInfo", JSON.stringify({
+        name: senderNameInput.value,
+        email: senderEmailInput.value,
+        saveInfo: true
+      }));
+    } else {
+      localStorage.removeItem("wishSavedInfo");
+    }
+  }
+
+  if(wishForm){
+    loadSavedInfo();
+
     wishForm.addEventListener("submit", (e) => {
       e.preventDefault();
-      const formData = new FormData(wishForm);
-      const name = (formData.get("name") || "").toString().trim();
-      const email = (formData.get("email") || "").toString().trim();
-      const message = (formData.get("message") || "").toString().trim();
+      const name = senderNameInput.value.trim();
+      const email = senderEmailInput.value.trim();
+      const message = wishMessageInput.value.trim();
 
-      if (!name || !message) {
-        showToast("Vui lòng điền tên và lời chúc!");
-        return;
+      if(!name || !message) return;
+
+      const wish = { name, email, message, timestamp: Date.now() };
+      wishes.unshift(wish);
+      // Keep only latest 50 wishes
+      if(wishes.length > 50) wishes = wishes.slice(0, 50);
+
+      localStorage.setItem("wishes", JSON.stringify(wishes));
+      saveInfoIfNeeded();
+
+      renderWishes();
+
+      // Reset form except saved info
+      wishMessageInput.value = "";
+      if(!saveInfoCheckbox.checked){
+        senderNameInput.value = "";
+        senderEmailInput.value = "";
       }
 
-      const wishes = loadWishes();
-      wishes.push({ name, email, message, timestamp: Date.now() });
-      saveWishes(wishes);
-
-      if (rememberMe?.checked) saveProfile({ name, email });
-      else localStorage.removeItem(PROFILE_KEY);
-
-      wishForm.reset();
-      render();
-      showToast("Gửi lời chúc thành công! Cảm ơn bạn rất nhiều.");
+      // Optional: show success message
+      const successMsg = document.createElement("div");
+      successMsg.textContent = "Lời chúc của bạn đã được gửi thành công!";
+      successMsg.style.cssText = "position:fixed;top:20%;left:50%;transform:translateX(-50%);background:var(--accent);color:#fff;padding:12px 20px;border-radius:8px;z-index:9999;animation:fadeOut 2s forwards";
+      document.body.appendChild(successMsg);
+      setTimeout(() => successMsg.remove(), 2000);
     });
   }
 
-  render();
-}
+  // Initial render
+  renderWishes();
 
-/* =========================
-   Music (requires gesture)
-   ========================= */
-function initMusic() {
-  const musicBtn = $("#musicBtn");
-  const bgMusic = $("#bgm");
-  if (!musicBtn || !bgMusic) return;
+  // ===== music =====
+  const musicBtn = document.getElementById("musicBtn");
+  const bgm = document.getElementById("bgm");
+  let playing = false;
 
-  const setUI = (playing) => {
-    musicBtn.classList.toggle("playing", playing);
-    musicBtn.setAttribute("aria-pressed", playing ? "true" : "false");
-  };
-
-  async function tryPlay() {
-    try {
-      bgMusic.volume = 0.7;
-      await bgMusic.play();
-      setUI(true);
-      return true;
-    } catch {
-      setUI(false);
-      return false;
-    }
+  function setState(on){
+    playing = on;
+    musicBtn?.setAttribute("aria-pressed", on ? "true" : "false");
   }
 
-  // Try on first user gesture anywhere
-  const unlock = async () => {
-    await tryPlay();
-    window.removeEventListener("pointerdown", unlock);
-  };
-  window.addEventListener("pointerdown", unlock, { once: true });
-
-  musicBtn.addEventListener("click", async (e) => {
-    e.preventDefault();
-    if (bgMusic.paused) await tryPlay();
-    else { bgMusic.pause(); setUI(false); }
+  musicBtn?.addEventListener("click", async ()=>{
+    if(!bgm) return;
+    try{
+      if(!playing){
+        await bgm.play();
+        setState(true);
+      }else{
+        bgm.pause();
+        setState(false);
+      }
+    }catch(_e){}
   });
-
-  bgMusic.addEventListener("play", () => setUI(true));
-  bgMusic.addEventListener("pause", () => setUI(false));
-}
-
-/* =========================
-   Lightbox
-   ========================= */
-function initLightbox() {
-  const lightbox = $("#lightbox");
-  const lightboxImg = $("#lightboxImg");
-  const lightboxClose = $("#lightboxClose");
-  if (!lightbox || !lightboxImg || !lightboxClose) return;
-
-  window.openLightbox = function (src) {
-    lightboxImg.src = src;
-    lightbox.classList.add("open");
-    lightbox.setAttribute("aria-hidden", "false");
-    document.body.style.overflow = "hidden";
-  };
-
-  const close = () => {
-    lightbox.classList.remove("open");
-    lightbox.setAttribute("aria-hidden", "true");
-    lightboxImg.src = "";
-    document.body.style.overflow = "";
-  };
-
-  lightboxClose.addEventListener("click", close);
-  lightbox.addEventListener("click", (e) => { if (e.target === lightbox) close(); });
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && lightbox.classList.contains("open")) close();
-  });
-}
-
-/* =========================
-   Share
-   ========================= */
-function initShare() {
-  const shareBtn = $("#shareBtn");
-  if (!shareBtn) return;
-
-  shareBtn.addEventListener("click", async () => {
-    const url = window.location.href;
-    const title = document.title;
-    const text = "Thiệp cưới online";
-
-    if (navigator.share) {
-      try { await navigator.share({ title, text, url }); } catch {}
-      return;
-    }
-
-    try {
-      await navigator.clipboard.writeText(url);
-      showToast("Đã sao chép link thiệp!");
-    } catch {
-      showToast("Không thể sao chép link. Vui lòng thử lại.");
-    }
-  });
-}
-
-/* =========================
-   Smooth Scroll
-   ========================= */
-function initSmoothScroll() {
-  $$('a[href^="#"]').forEach((a) => {
-    a.addEventListener("click", function (e) {
-      const href = this.getAttribute("href");
-      if (!href || href === "#") return;
-      const target = $(href);
-      if (!target) return;
-      e.preventDefault();
-      target.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
-  });
-}
-
-/* =========================
-   Toast
-   ========================= */
-function showToast(message) {
-  const toast = document.createElement("div");
-  toast.textContent = message;
-  toast.style.cssText = `
-    position: fixed;
-    left: 50%;
-    bottom: 100px;
-    transform: translateX(-50%);
-    background: rgba(0, 0, 0, 0.82);
-    color: white;
-    padding: 12px 20px;
-    border-radius: 50px;
-    font-size: 14px;
-    z-index: 3000;
-    max-width: 90vw;
-    text-align: center;
-  `;
-  document.body.appendChild(toast);
-
-  setTimeout(() => {
-    toast.style.opacity = "0";
-    toast.style.transition = "opacity .25s ease";
-    setTimeout(() => toast.remove(), 260);
-  }, 2500);
-}
+})();

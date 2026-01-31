@@ -1,0 +1,238 @@
+(function(){
+  // ===== config =====
+  // Wedding date (Asia/Tokyo +09:00). Change time if needed.
+  const WEDDING_ISO = "2026-03-08T00:00:00+09:00";
+  const RSVP_DEADLINE_TEXT = "2026年03月08日 (日)";
+
+  // Album config (your current structure is 1.webp..)
+  // If you convert to webp: folder='assets/album_webp', ext='webp'
+  const ALBUM = { total: 39, initial: 9, addEach: 12, folder: "assets/album", ext: "webp" };
+
+  // ===== nav =====
+  const navBtn = document.getElementById("navBtn");
+  const navPanel = document.getElementById("navPanel");
+  const navBackdrop = document.getElementById("navBackdrop");
+
+  function openNav(){
+    navPanel.hidden = false;
+    navBackdrop.hidden = false;
+    navBtn.setAttribute("aria-expanded","true");
+  }
+  function closeNav(){
+    navPanel.hidden = true;
+    navBackdrop.hidden = true;
+    navBtn.setAttribute("aria-expanded","false");
+  }
+  navBtn?.addEventListener("click", ()=>{
+    const open = navBtn.getAttribute("aria-expanded")==="true";
+    open ? closeNav() : openNav();
+  });
+  navBackdrop?.addEventListener("click", closeNav);
+  navPanel?.addEventListener("click", (e)=>{
+    if(e.target.closest("a")) closeNav();
+  });
+
+  // smooth scroll
+  document.addEventListener("click", (e)=>{
+    const a = e.target.closest('a[href^="#"]');
+    if(!a) return;
+    const id = a.getAttribute("href");
+    if(!id || id.length<=1) return;
+    const el = document.querySelector(id);
+    if(!el) return;
+    e.preventDefault();
+    el.scrollIntoView({behavior:"smooth", block:"start"});
+  });
+
+  // ===== countdown =====
+  const $d = document.getElementById("cdDays");
+  const $h = document.getElementById("cdHours");
+  const $m = document.getElementById("cdMinutes");
+  const $s = document.getElementById("cdSeconds");
+  const $deadline = document.getElementById("rsvpDeadline");
+  if($deadline) $deadline.textContent = RSVP_DEADLINE_TEXT;
+
+  const target = new Date(WEDDING_ISO).getTime();
+
+  function pad(n){ return String(n).padStart(2,"0"); }
+
+  function tick(){
+    const now = Date.now();
+    let diff = Math.max(0, target - now);
+
+    const days = Math.floor(diff / (1000*60*60*24));
+    diff -= days * (1000*60*60*24);
+    const hours = Math.floor(diff / (1000*60*60));
+    diff -= hours * (1000*60*60);
+    const mins = Math.floor(diff / (1000*60));
+    diff -= mins * (1000*60);
+    const secs = Math.floor(diff / 1000);
+
+    if($d) $d.textContent = String(days);
+    if($h) $h.textContent = pad(hours);
+    if($m) $m.textContent = pad(mins);
+    if($s) $s.textContent = pad(secs);
+  }
+  tick();
+  setInterval(tick, 1000);
+
+  // ===== album slider =====
+  const slider = document.getElementById("albumSlider");
+  const $prev = document.getElementById("albumPrev");
+  const $cur = document.getElementById("albumCurrent");
+  const $next = document.getElementById("albumNext");
+  let prevBtn = document.getElementById("albumPrevBtn") || document.querySelector(".album-prev-btn");
+  let nextBtn = document.getElementById("albumNextBtn") || document.querySelector(".album-next-btn");
+  const thumbs = document.getElementById("albumThumbs");
+
+  function path(i){ return `${ALBUM.folder}/${i}.${ALBUM.ext}`; }
+  function clampIndex(i){
+    const max = Math.max(1, ALBUM.total);
+    const v = ((i % max) + max) % max;
+    return v;
+  }
+  function toIdFromIndex(idx0){ return idx0 + 1; }
+  function toIndexFromId(id1){ return id1 - 1; }
+
+  let current = 0;
+  let thumbButtons = [];
+
+  function renderThumbs(){
+    if(!thumbs) return;
+    thumbs.innerHTML = "";
+    thumbButtons = [];
+    for(let i=1; i<=ALBUM.total; i++){
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "album-thumb";
+      b.setAttribute("aria-label", `photo ${i}`);
+      b.setAttribute("aria-current", "false");
+
+      const img = document.createElement("img");
+      img.loading = "lazy";
+      img.decoding = "async";
+      img.src = path(i);
+      img.alt = `album-${i}`;
+      b.appendChild(img);
+
+      b.addEventListener("click", ()=>{
+        setCurrent(toIndexFromId(i), { scrollThumb: true });
+      });
+
+      thumbs.appendChild(b);
+      thumbButtons.push(b);
+    }
+  }
+
+  function setCurrent(nextIndex0, opts){
+    const options = opts || {};
+    const idx = clampIndex(nextIndex0);
+    console.log('setCurrent', { nextIndex0, idx, currentBefore: current });
+    current = idx;
+
+    const idCur = toIdFromIndex(current);
+    const idPrev = toIdFromIndex(clampIndex(current - 1));
+    const idNext = toIdFromIndex(clampIndex(current + 1));
+    console.log('ids', { idPrev, idCur, idNext });
+
+    if($prev){
+      $prev.src = path(idPrev);
+      $prev.alt = `album-${idPrev}`;
+      $prev.loading = "eager";
+    }
+    if($cur){
+      $cur.src = path(idCur);
+      $cur.alt = `album-${idCur}`;
+      $cur.loading = "eager";
+    }
+    if($next){
+      $next.src = path(idNext);
+      $next.alt = `album-${idNext}`;
+      $next.loading = "eager";
+    }
+
+    if(thumbButtons.length){
+      for(let i=0; i<thumbButtons.length; i++){
+        thumbButtons[i].setAttribute("aria-current", i === current ? "true" : "false");
+      }
+      const active = thumbButtons[current];
+      if(options.scrollThumb && active?.scrollIntoView){
+        active.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+      }
+    }
+  }
+
+  function prev(){ 
+    console.log('prev clicked, current before:', current);
+    setCurrent(current - 1, { scrollThumb: true }); 
+  }
+  function next(){ 
+    console.log('next clicked, current before:', current);
+    setCurrent(current + 1, { scrollThumb: true }); 
+  }
+
+  if(slider && $cur && thumbs){
+    renderThumbs();
+    setCurrent(0, { scrollThumb: false });
+
+    // Debug: ensure elements exist
+    console.log('album elements', { slider, $cur, thumbs, prevBtn, nextBtn });
+
+    if(prevBtn){
+      prevBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        console.log('prevBtn clicked', { current });
+        prev();
+      });
+      // Force style to ensure clickable
+      prevBtn.style.pointerEvents = 'auto';
+      prevBtn.style.zIndex = '20';
+    } else {
+      console.error('prevBtn not found');
+    }
+    if(nextBtn){
+      nextBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        console.log('nextBtn clicked', { current });
+        next();
+      });
+      nextBtn.style.pointerEvents = 'auto';
+      nextBtn.style.zIndex = '20';
+    } else {
+      console.error('nextBtn not found');
+    }
+
+    // keyboard support when slider is visible
+    document.addEventListener("keydown", (e)=>{
+      if(e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+      const rect = slider.getBoundingClientRect();
+      const inView = rect.bottom > 0 && rect.top < window.innerHeight;
+      if(!inView) return;
+      if(e.key === "ArrowLeft") prev();
+      else next();
+    });
+  }
+
+  // ===== music =====
+  const musicBtn = document.getElementById("musicBtn");
+  const bgm = document.getElementById("bgm");
+  let playing = false;
+
+  function setState(on){
+    playing = on;
+    musicBtn?.setAttribute("aria-pressed", on ? "true" : "false");
+  }
+
+  musicBtn?.addEventListener("click", async ()=>{
+    if(!bgm) return;
+    try{
+      if(!playing){
+        await bgm.play();
+        setState(true);
+      }else{
+        bgm.pause();
+        setState(false);
+      }
+    }catch(_e){}
+  });
+})();
