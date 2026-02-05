@@ -213,9 +213,9 @@ a{color:inherit}
 .album-stage{
   position:relative;
   display:grid;
-  grid-template-columns:1fr minmax(0, 560px) 1fr;
+  grid-template-columns:1fr minmax(0, 680px) 1fr;
   align-items:center;
-  gap:16px;
+  gap:20px;
   padding:0 44px;
 }
 .album-img{
@@ -225,6 +225,7 @@ a{color:inherit}
   border-radius:0;
   opacity:1;
   filter:none;
+  transition:opacity 0.3s ease-in-out;
 }
 .album-main{
   aspect-ratio:1 / 1;
@@ -520,6 +521,7 @@ textarea.input{resize:vertical}
   .wishes-form{padding:20px}
   .wedding-info-grid{grid-template-columns:1fr;gap:16px}
   .gift-grid{gap:20px}
+  .album-stage{padding:0 20px}
 }
 @media (max-width:480px){
   .hero-media{height:52vh;padding:0 12px;}
