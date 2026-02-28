@@ -308,30 +308,83 @@
 
   let wishes = [];
 
-  // API base URL - use localStorage fallback since no backend is available
-  const API_BASE = null; // Disable API calls since there's no backend
+  // API base URL - use JSONBin.io for cloud storage
+  const API_BASE = 'https://api.jsonbin.io/v3/b/69a2c8c2ae596e708f51fec1'; // Your bin ID
+  const API_KEY = '$2a$10$hYP9N.A4MNRWbeQ.TqoRIO1kZlP.15IuoWYf1KlOMmn42NTjLJERa'; // Your API Key
 
   async function loadWishesFromServer() {
-    // Always use localStorage since there's no backend server
-    wishes = JSON.parse(localStorage.getItem("wishes") || "[]");
-    renderWishes();
-    return;
+    try {
+      const response = await fetch(API_BASE, {
+        method: 'GET',
+        headers: {
+          'X-Master-Key': API_KEY,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const result = await response.json();
+      wishes = result.record || [];
+      renderWishes();
+    } catch (error) {
+      console.error('Failed to load wishes:', error);
+      // Fallback to empty array if API fails
+      wishes = [];
+      renderWishes();
+    }
   }
 
   async function saveWishToServer(wishData) {
-    // Always save to localStorage since there's no backend server
-    const wishWithTimestamp = {
-      ...wishData,
-      timestamp: new Date().toISOString()
-    };
-    
-    wishes.unshift(wishWithTimestamp);
-    // Keep only latest 50 wishes
-    if (wishes.length > 50) wishes = wishes.slice(0, 50);
-    
-    localStorage.setItem("wishes", JSON.stringify(wishes));
-    renderWishes();
-    return true;
+    try {
+      // First load current wishes
+      const getResponse = await fetch(API_BASE, {
+        method: 'GET',
+        headers: {
+          'X-Master-Key': API_KEY,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!getResponse.ok) {
+        throw new Error(`HTTP error! status: ${getResponse.status}`);
+      }
+      
+      const getResult = await getResponse.json();
+      const currentWishes = getResult.record || [];
+      
+      // Add new wish
+      const newWish = {
+        id: Date.now().toString(),
+        name: wishData.name,
+        email: wishData.email || '',
+        message: wishData.message,
+        timestamp: Date.now()
+      };
+      
+      const updatedWishes = [newWish, ...currentWishes].slice(0, 50); // Keep latest 50
+      
+      // Update the bin
+      const updateResponse = await fetch(API_BASE, {
+        method: 'PUT',
+        headers: {
+          'X-Master-Key': API_KEY,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(updatedWishes)
+      });
+      
+      if (!updateResponse.ok) {
+        throw new Error(`HTTP error! status: ${updateResponse.status}`);
+      }
+      
+      // Reload wishes to display updated list
+      await loadWishesFromServer();
+      return true;
+    } catch (error) {
+      console.error('Failed to save wish:', error);
+      return false;
+    }
   }
 
   function formatDate(date){
