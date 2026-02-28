@@ -315,7 +315,67 @@
   const wishMessageInput = document.getElementById("wishMessage");
   const saveInfoCheckbox = document.getElementById("saveInfo");
 
-  let wishes = JSON.parse(localStorage.getItem("wishes") || "[]");
+  let wishes = [];
+
+  // API base URL - change this if your server runs on different port/domain
+  const API_BASE = window.location.origin + '/api';
+
+  async function loadWishesFromServer() {
+    try {
+      const response = await fetch(`${API_BASE}/wishes`);
+      if (response.ok) {
+        wishes = await response.json();
+        renderWishes();
+      } else {
+        console.error('Failed to load wishes from server');
+        // Fallback to localStorage if server is unavailable
+        wishes = JSON.parse(localStorage.getItem("wishes") || "[]");
+        renderWishes();
+      }
+    } catch (error) {
+      console.error('Error loading wishes:', error);
+      // Fallback to localStorage if server is unavailable
+      wishes = JSON.parse(localStorage.getItem("wishes") || "[]");
+      renderWishes();
+    }
+  }
+
+  async function saveWishToServer(wishData) {
+    try {
+      const response = await fetch(`${API_BASE}/wishes`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(wishData)
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        wishes.unshift(result.wish);
+        // Keep only latest 50 wishes
+        if (wishes.length > 50) wishes = wishes.slice(0, 50);
+        
+        // Also save to localStorage as backup
+        localStorage.setItem("wishes", JSON.stringify(wishes));
+        
+        renderWishes();
+        return true;
+      } else {
+        const error = await response.json();
+        console.error('Server error:', error.error);
+        return false;
+      }
+    } catch (error) {
+      console.error('Error saving wish to server:', error);
+      // Fallback to localStorage if server is unavailable
+      wishes.unshift(wishData);
+      if (wishes.length > 50) wishes = wishes.slice(0, 50);
+      localStorage.setItem("wishes", JSON.stringify(wishes));
+      renderWishes();
+      return true; // Still return true since we saved locally
+    }
+  }
 
   function formatDate(date){
     return new Intl.DateTimeFormat("vi-VN", {
@@ -362,7 +422,7 @@
   if(wishForm){
     loadSavedInfo();
 
-    wishForm.addEventListener("submit", (e) => {
+    wishForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       const name = senderNameInput.value.trim();
       const email = senderEmailInput.value.trim();
@@ -370,34 +430,49 @@
 
       if(!name || !message) return;
 
-      const wish = { name, email, message, timestamp: Date.now() };
-      wishes.unshift(wish);
-      // Keep only latest 50 wishes
-      if(wishes.length > 50) wishes = wishes.slice(0, 50);
+      const wish = { name, email, message };
+      
+      // Show loading state
+      const submitBtn = wishForm.querySelector('button[type="submit"]');
+      const originalText = submitBtn.innerHTML;
+      submitBtn.innerHTML = 'Đang gửi...<br>Sending...';
+      submitBtn.disabled = true;
 
-      localStorage.setItem("wishes", JSON.stringify(wishes));
-      saveInfoIfNeeded();
+      const success = await saveWishToServer(wish);
+      
+      // Reset button state
+      submitBtn.innerHTML = originalText;
+      submitBtn.disabled = false;
 
-      renderWishes();
+      if (success) {
+        saveInfoIfNeeded();
 
-      // Reset form except saved info
-      wishMessageInput.value = "";
-      if(!saveInfoCheckbox.checked){
-        senderNameInput.value = "";
-        senderEmailInput.value = "";
+        // Reset form except saved info
+        wishMessageInput.value = "";
+        if(!saveInfoCheckbox.checked){
+          senderNameInput.value = "";
+          senderEmailInput.value = "";
+        }
+
+        // Show success message
+        const successMsg = document.createElement("div");
+        successMsg.textContent = "Lời chúc của bạn đã được gửi thành công!";
+        successMsg.style.cssText = "position:fixed;top:20%;left:50%;transform:translateX(-50%);background:var(--accent);color:#fff;padding:12px 20px;border-radius:8px;z-index:9999;animation:fadeOut 2s forwards";
+        document.body.appendChild(successMsg);
+        setTimeout(() => successMsg.remove(), 2000);
+      } else {
+        // Show error message
+        const errorMsg = document.createElement("div");
+        errorMsg.textContent = "Có lỗi xảy ra, vui lòng thử lại!";
+        errorMsg.style.cssText = "position:fixed;top:20%;left:50%;transform:translateX(-50%);background:#e74c3c;color:#fff;padding:12px 20px;border-radius:8px;z-index:9999;animation:fadeOut 2s forwards";
+        document.body.appendChild(errorMsg);
+        setTimeout(() => errorMsg.remove(), 2000);
       }
-
-      // Optional: show success message
-      const successMsg = document.createElement("div");
-      successMsg.textContent = "Lời chúc của bạn đã được gửi thành công!";
-      successMsg.style.cssText = "position:fixed;top:20%;left:50%;transform:translateX(-50%);background:var(--accent);color:#fff;padding:12px 20px;border-radius:8px;z-index:9999;animation:fadeOut 2s forwards";
-      document.body.appendChild(successMsg);
-      setTimeout(() => successMsg.remove(), 2000);
     });
   }
 
-  // Initial render
-  renderWishes();
+  // Initial load from server
+  loadWishesFromServer();
 
   // ===== music =====
   const musicBtn = document.getElementById("musicBtn");
