@@ -127,13 +127,11 @@
   function setCurrent(nextIndex0, opts){
     const options = opts || {};
     const idx = clampIndex(nextIndex0);
-    console.log('setCurrent', { nextIndex0, idx, currentBefore: current });
     current = idx;
 
     const idCur = toIdFromIndex(current);
     const idPrev = toIdFromIndex(clampIndex(current - 1));
     const idNext = toIdFromIndex(clampIndex(current + 1));
-    console.log('ids', { idPrev, idCur, idNext });
 
     // Simple image loading without opacity manipulation
     if($prev){
@@ -164,11 +162,9 @@
   }
 
   function prev(){ 
-    console.log('prev clicked, current before:', current);
     setCurrent(current - 1, { scrollThumb: true }); 
   }
   function next(){ 
-    console.log('next clicked, current before:', current);
     setCurrent(current + 1, { scrollThumb: true }); 
   }
 
@@ -176,15 +172,17 @@
     renderThumbs();
     setCurrent(0, { scrollThumb: false });
 
-    // Debug: ensure elements exist
-    console.log('album elements', { slider, $cur, thumbs, prevBtn, nextBtn });
+    // Ensure elements exist
+    if (!prevBtn || !nextBtn) {
+      console.error('Album navigation buttons not found');
+      return;
+    }
 
     if(prevBtn){
       // iOS needs both touchstart and touchend for proper handling
       prevBtn.addEventListener("touchstart", (e) => {
         e.preventDefault();
         e.stopPropagation();
-        console.log('prevBtn touched', { current });
         prev();
       }, { passive: false });
       
@@ -196,7 +194,6 @@
       prevBtn.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
-        console.log('prevBtn clicked', { current });
         prev();
       });
       
@@ -205,15 +202,12 @@
       prevBtn.style.zIndex = '20';
       prevBtn.style.touchAction = 'manipulation';
       prevBtn.style.webkitTapHighlightColor = 'transparent';
-    } else {
-      console.error('prevBtn not found');
     }
     if(nextBtn){
       // iOS needs both touchstart and touchend for proper handling
       nextBtn.addEventListener("touchstart", (e) => {
         e.preventDefault();
         e.stopPropagation();
-        console.log('nextBtn touched', { current });
         next();
       }, { passive: false });
       
@@ -225,7 +219,6 @@
       nextBtn.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
-        console.log('nextBtn clicked', { current });
         next();
       });
       
@@ -233,8 +226,6 @@
       nextBtn.style.zIndex = '20';
       nextBtn.style.touchAction = 'manipulation';
       nextBtn.style.webkitTapHighlightColor = 'transparent';
-    } else {
-      console.error('nextBtn not found');
     }
 
     // keyboard support when slider is visible
@@ -317,70 +308,30 @@
 
   let wishes = [];
 
-  // API base URL - auto detect environment
-  const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
-    ? 'http://localhost:3000/api' 
-    : window.location.origin + '/api';
+  // API base URL - use localStorage fallback since no backend is available
+  const API_BASE = null; // Disable API calls since there's no backend
 
   async function loadWishesFromServer() {
-    try {
-      const response = await fetch(`${API_BASE}/wishes`);
-      if (response.ok) {
-        wishes = await response.json();
-        renderWishes();
-      } else {
-        console.error('Failed to load wishes from server');
-        // Fallback to localStorage if server is unavailable
-        wishes = JSON.parse(localStorage.getItem("wishes") || "[]");
-        renderWishes();
-      }
-    } catch (error) {
-      console.error('Error loading wishes:', error);
-      // Fallback to localStorage if server is unavailable
-      wishes = JSON.parse(localStorage.getItem("wishes") || "[]");
-      renderWishes();
-    }
+    // Always use localStorage since there's no backend server
+    wishes = JSON.parse(localStorage.getItem("wishes") || "[]");
+    renderWishes();
+    return;
   }
 
   async function saveWishToServer(wishData) {
-    console.log('Sending wish to server:', wishData);
-    try {
-      const response = await fetch(`${API_BASE}/wishes`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(wishData)
-      });
-      
-      console.log('Server response status:', response.status);
-      
-      if (response.ok) {
-        const result = await response.json();
-        console.log('Server response:', result);
-        wishes.unshift(result.wish);
-        // Keep only latest 50 wishes
-        if (wishes.length > 50) wishes = wishes.slice(0, 50);
-        
-        // Also save to localStorage as backup
-        localStorage.setItem("wishes", JSON.stringify(wishes));
-        
-        renderWishes();
-        return true;
-      } else {
-        const error = await response.json();
-        console.error('Server error:', error.error);
-        return false;
-      }
-    } catch (error) {
-      console.error('Error saving wish to server:', error);
-      // Fallback to localStorage if server is unavailable
-      wishes.unshift(wishData);
-      if (wishes.length > 50) wishes = wishes.slice(0, 50);
-      localStorage.setItem("wishes", JSON.stringify(wishes));
-      renderWishes();
-      return true; // Still return true since we saved locally
-    }
+    // Always save to localStorage since there's no backend server
+    const wishWithTimestamp = {
+      ...wishData,
+      timestamp: new Date().toISOString()
+    };
+    
+    wishes.unshift(wishWithTimestamp);
+    // Keep only latest 50 wishes
+    if (wishes.length > 50) wishes = wishes.slice(0, 50);
+    
+    localStorage.setItem("wishes", JSON.stringify(wishes));
+    renderWishes();
+    return true;
   }
 
   function formatDate(date){
@@ -399,11 +350,17 @@
     if(wishesPlaceholder) wishesPlaceholder.style.display = "none";
     wishesList.innerHTML = wishes.map(w => `
       <div class="wish-item">
-        <div class="wish-author">${w.name}</div>
+        <div class="wish-author">${escapeHtml(w.name)}</div>
         <div class="wish-time">${formatDate(new Date(w.timestamp))}</div>
-        <div class="wish-text">${w.message.replace(/\n/g, "<br>")}</div>
+        <div class="wish-text">${escapeHtml(w.message).replace(/\n/g, "<br>")}</div>
       </div>
     `).join("");
+  }
+
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
   }
 
   function loadSavedInfo(){
